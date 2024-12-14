@@ -5,8 +5,7 @@
 * Johnathan Fagoaga - foggy1365@csu.fullerton.edu
 
 
-- Test case files
+# Test case files
 * input1.txt, input2.txt, input3.txt
-
-- Output files
+# Output files
 * output1.txt, output2.txt, output3.txt
