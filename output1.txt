@@ -1,2 +1,20 @@
-Syntax Error: Unexpected token ('MISMATCH', '@')
-Unexpected token ('MISMATCH', '@')
+Symbol Table
+Identifier MemoryLocation Type
+sum 9000 integer
+i 9001 integer
+
+Generated Assembly Code:
+PUSHI 0
+POPM 9000
+PUSHI 1
+POPM 9001
+PUSHM i
+PUSHI 10
+LES
+JUMPZ LABEL2
+PUSHI sum + i
+POPM 9000
+PUSHI sum + i
+POPM 9000
+PUSHI i + 1
+POPM 9001

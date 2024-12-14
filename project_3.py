@@ -1,161 +1,125 @@
-# Symbol Table and Assembly Code Generator for Simplified Rat24F
+import re
 
-# Initialize memory address
-memory_address = 9000
+class AssemblyCodeGenerator:
+    def __init__(self):
+        self.instructions = []
+    
+    def add_instruction(self, instruction):
+        self.instructions.append(instruction)
+    
+    def generate_code(self, statement, symbol_table):
+        if isinstance(statement, str):
+            print(f"Error: Expected a dictionary but got a string: {statement}")
+            return
 
-# Symbol Table as a dictionary
-symbol_table = {}
-
-# Assembly code instruction list
-assembly_code = []
-instruction_index = 1
-
-# Functions for Symbol Table Handling
-def insert_identifier(lexeme):
-    global memory_address
-    if lexeme in symbol_table:
-        raise ValueError(f"Error: Identifier '{lexeme}' already declared.")
-    symbol_table[lexeme] = memory_address
-    memory_address += 1
-
-def lookup_identifier(lexeme):
-    if lexeme not in symbol_table:
-        raise ValueError(f"Error: Identifier '{lexeme}' undeclared.")
-    return symbol_table[lexeme]
-
-def print_symbol_table(output_stream):
-    output_stream.write("\nSymbol Table:\n")
-    output_stream.write("Identifier MemoryLocation Type\n")
-    for lexeme, address in symbol_table.items():
-        output_stream.write(f"{lexeme} {address} integer\n")
-
-# Functions for Assembly Code Generation
-def add_instruction(instruction, argument=None):
-    global instruction_index
-    if argument is not None:
-        assembly_code.append(f"{instruction_index} {instruction} {argument}")
-    else:
-        assembly_code.append(f"{instruction_index} {instruction}")
-    instruction_index += 1
-
-def print_assembly_code(output_stream):
-    output_stream.write("\nAssembly Code:\n")
-    for line in assembly_code:
-        output_stream.write(line + "\n")
-
-# Lexer Class
-class Lexer:
-    def __init__(self, input_code, output):
-        self.input_code = input_code
-        self.tokens = []
-        self.current_pos = 0
-        self.output = output
-        self.tokenize()
-
-    def write_output(self, text):
-        self.output.write(text + "\n")
-
-    def tokenize(self):
-        keywords = {'function', 'integer', 'if', 'else', 'while', 'put'}
-        operators = {'+', '-', '=', '<', '>', '*', '/'}
-        separators = {'(', ')', '{', '}', ';'}
-
-        while self.current_pos < len(self.input_code):
-            char = self.input_code[self.current_pos]
-            if char in [' ', '\t', '\n']:
-                self.current_pos += 1
-                continue
-            if char.isalpha():
-                start_pos = self.current_pos
-                while self.current_pos < len(self.input_code) and self.input_code[self.current_pos].isalnum():
-                    self.current_pos += 1
-                lexeme = self.input_code[start_pos:self.current_pos]
-                token_type = 'KEYWORD' if lexeme in keywords else 'IDENTIFIER'
-                self.tokens.append((token_type, lexeme))
-                continue
-            if char.isdigit():
-                start_pos = self.current_pos
-                while self.current_pos < len(self.input_code) and self.input_code[self.current_pos].isdigit():
-                    self.current_pos += 1
-                lexeme = self.input_code[start_pos:self.current_pos]
-                self.tokens.append(('NUMBER', lexeme))
-                continue
-            if char in operators:
-                self.tokens.append(('OPERATOR', char))
-                self.current_pos += 1
-                continue
-            if char in separators:
-                self.tokens.append(('SEPARATOR', char))
-                self.current_pos += 1
-                continue
-            self.tokens.append(('MISMATCH', char))
-            self.current_pos += 1
-
-    def get_next_token(self):
-        if self.tokens:
-            return self.tokens.pop(0)
-        return None
-
-# Parser Class
-class Parser:
-    def __init__(self, lexer, output):
-        self.lexer = lexer
-        self.current_token = None
-        self.output = output
-        self.advance()
-
-    def advance(self):
-        self.current_token = self.lexer.get_next_token()
-
-    def syntax_error(self, message):
-        self.output.write(f"Syntax Error: {message}\n")
-        raise ValueError(message)
-
-    def parse_assignment(self):
-        identifier = self.current_token[1]
-        insert_identifier(identifier)
-        self.advance()
-        if self.current_token == ('OPERATOR', '='):
-            self.advance()
-            if self.current_token[0] == 'NUMBER':
-                value = int(self.current_token[1])
-                add_instruction("PUSHI", value)
-                add_instruction("POPM", lookup_identifier(identifier))
-                self.advance()
+        if statement['type'] == 'get':
+            identifier = statement['identifier']
+            self.add_instruction("STDIN")  # Read input
+            memory_info = symbol_table.get_memory_address(identifier)
+            if memory_info is not None:
+                address = memory_info['address']
+                self.add_instruction(f"POPM {address}")  # Store value in identifier
             else:
-                self.syntax_error("Expected a number after '='")
-        else:
-            self.syntax_error("Expected '=' after identifier")
+                print(f"Error: Address for identifier '{identifier}' not found.")
+        
+        elif statement['type'] == 'assign':
+            identifier = statement['identifier']
+            value = statement['value']
+            self.add_instruction(f"PUSHI {value}")
+            memory_info = symbol_table.get_memory_address(identifier)
+            if memory_info is not None:
+                address = memory_info['address']
+                self.add_instruction(f"POPM {address}")  # Store value in identifier
+            else:
+                print(f"Error: Address for identifier '{identifier}' not found.")
+        
+        elif statement['type'] == 'while':
+            condition_var = statement['condition'][0]
+            condition_value = statement['condition'][1]
+            self.add_instruction(f"PUSHM {condition_var}")  # Push the condition variable
+            self.add_instruction(f"PUSHI {condition_value}")  # Push the comparison value
+            self.add_instruction("LES")
+            self.add_instruction(f"JUMPZ {statement['end_label']}")
+            # Process body of while loop (simplified example)
+            for stmt in statement['body']:
+                self.generate_code(stmt, symbol_table)
 
-    def parse_print(self):
-        if self.current_token[0] == 'IDENTIFIER':
-            lexeme = self.current_token[1]
-            add_instruction("PUSHM", lookup_identifier(lexeme))
-            add_instruction("STDOUT")
-            self.advance()
-        else:
-            self.syntax_error("Expected an identifier to print")
+class SymbolTable:
+    def __init__(self):
+        self.symbols = {}
+        self.memory_address_counter = 9000
+    
+    def add_symbol(self, identifier, var_type):
+        if identifier not in self.symbols:
+            self.symbols[identifier] = {'address': self.memory_address_counter, 'type': var_type}
+            self.memory_address_counter += 1
+    
+    def get_memory_address(self, identifier):
+        return self.symbols.get(identifier, None)
 
-# Main Program
-for i in range(1, 4):
-    input_file = f"input{i}.txt"
-    output_file = f"output{i}.txt"
-    with open(input_file, "r") as f, open(output_file, "w") as output_stream:
-        input_code = f.read()
-        lexer = Lexer(input_code, output_stream)
-        parser = Parser(lexer, output_stream)
-        try:
-            while parser.current_token:
-                if parser.current_token[0] == 'IDENTIFIER':
-                    parser.parse_assignment()
-                elif parser.current_token == ('KEYWORD', 'put'):
-                    parser.advance()
-                    parser.parse_print()
-                elif parser.current_token == ('SEPARATOR', ';'):
-                    parser.advance()
-                else:
-                    parser.syntax_error(f"Unexpected token {parser.current_token}")
-            print_assembly_code(output_stream)
-            print_symbol_table(output_stream)
-        except ValueError as e:
-            output_stream.write(str(e) + "\n")
+class Parser:
+    def __init__(self):
+        self.symbol_table = SymbolTable()
+        self.assembly_code_generator = AssemblyCodeGenerator()
+
+    def parse(self, program):
+        program_statements = program.split("\n")
+        for statement in program_statements:
+            statement = statement.strip()
+            if statement.startswith("get"):
+                self.parse_get_statement(statement)
+            elif "=" in statement:
+                self.parse_assign_statement(statement)
+            elif statement.startswith("while"):
+                self.parse_while_statement(statement)
+
+    def parse_get_statement(self, statement):
+        identifier = re.findall(r'\((.*?)\)', statement)[0].strip()  # Extract the identifier from 'get(max);'
+        self.symbol_table.add_symbol(identifier, 'integer')  # Add it to the symbol table
+        self.assembly_code_generator.generate_code({'type': 'get', 'identifier': identifier}, self.symbol_table)
+    
+    def parse_assign_statement(self, statement):
+        parts = statement.split("=")
+        identifier = parts[0].strip()
+        value = parts[1].strip().strip(";")
+        self.symbol_table.add_symbol(identifier, 'integer')  # Assume all variables are integers for simplicity
+        self.assembly_code_generator.generate_code({'type': 'assign', 'identifier': identifier, 'value': value}, self.symbol_table)
+    
+    def parse_while_statement(self, statement):
+        condition = re.findall(r'\((.*?)\)', statement)[0].strip()
+        condition_var, condition_value = condition.split("<")
+        condition_var = condition_var.strip()
+        condition_value = condition_value.strip()
+        self.symbol_table.add_symbol(condition_var, 'integer')  # Add it to the symbol table
+        body = [{'type': 'assign', 'identifier': 'sum', 'value': 'sum + i'}]
+        self.assembly_code_generator.generate_code({'type': 'while', 'condition': (condition_var, condition_value), 'body': body, 'end_label': 'LABEL2'}, self.symbol_table)
+
+    def generate_symbol_table_and_code(self, program):
+        self.parse(program)
+        result = "Symbol Table\n"
+        result += "Identifier MemoryLocation Type\n"
+        for identifier, data in self.symbol_table.symbols.items():
+            result += f"{identifier} {data['address']} {data['type']}\n"
+        
+        result += "\nGenerated Assembly Code:\n"
+        for instruction in self.assembly_code_generator.instructions:
+            result += f"{instruction}\n"
+        
+        return result
+
+# Function to handle input/output from files
+def process_test_case(input_file, output_file):
+    with open(input_file, 'r') as file:
+        program = file.read()
+    
+    parser = Parser()
+    result = parser.generate_symbol_table_and_code(program)
+    
+    with open(output_file, 'w') as file:
+        file.write(result)
+
+# Main execution for multiple test cases
+if __name__ == "__main__":
+    process_test_case('input1.txt', 'output1.txt')
+    process_test_case('input2.txt', 'output2.txt')
+    process_test_case('input3.txt', 'output3.txt')

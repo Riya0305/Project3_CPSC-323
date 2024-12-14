@@ -1,5 +1,40 @@
-
-Assembly Code:
-
-Symbol Table:
+Symbol Table
 Identifier MemoryLocation Type
+sum 9000 integer
+i 9001 integer
+max 9002 integer
+min 9003 integer
+
+Generated Assembly Code:
+PUSHI 0
+POPM 9000
+PUSHI 1
+POPM 9001
+PUSHI 10
+POPM 9002
+PUSHI 1
+POPM 9003
+PUSHM i
+PUSHI max
+LES
+JUMPZ LABEL2
+PUSHI sum + i
+POPM 9000
+PUSHI sum + i
+POPM 9000
+PUSHI i + 1
+POPM 9001
+PUSHI max - 1
+POPM 9002
+PUSHM min
+PUSHI max
+LES
+JUMPZ LABEL2
+PUSHI sum + i
+POPM 9000
+PUSHI sum + min
+POPM 9000
+PUSHI min + 1
+POPM 9003
+PUSHI sum + max
+POPM 9000

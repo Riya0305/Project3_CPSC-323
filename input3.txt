@@ -1,0 +1,17 @@
+@ 
+integer sum, i, max, min; [* declarations *]
+sum = 0;
+i = 1;
+max = 10;
+min = 1;
+while(i < max) {
+    sum = sum + i;
+    i = i + 1;
+}
+max = max - 1;
+while(min < max) {
+    sum = sum + min;
+    min = min + 1;
+}
+sum = sum + max;
+@

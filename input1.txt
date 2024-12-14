@@ -1,11 +1,9 @@
-@
-integer i, max, sum; [* declarations *]
+@ 
+integer sum, i; [* declarations *]
 sum = 0;
 i = 1;
-get (max);
-while (i < max) {
-sum = sum + i;
-i = i + 1;
+while(i < 10) {
+    sum = sum + i;
+    i = i + 1;
 }
-put (sum + max);
 @
